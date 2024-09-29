@@ -48,7 +48,12 @@ def entries2ledger(entries,statement_data)
 	  if key == :valuta # Replace :specific_key with the key you're checking for
         entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
       end
-      print value
+      #print value
+		if key == :reason
+		  print "\"#{value}\""
+		else
+		  print value
+		end																							
       print ', ' unless index == entrydata.size - 1
     end
 	puts # For a newline at the end
