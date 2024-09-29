@@ -42,11 +42,11 @@ def entries2ledger(entries,statement_data)
     puts "    #{$account_prefix}#{statement_data[:iban]}\t#{entrydata[:value].to_s.gsub('.',',')} #{statement_data[:currency]}"
     puts "    #{entrydata[:toaccount]}"
     entrydata.each do |key,value|
-	  if key == :date # Replace :specific_key with the key you're checking for
-        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
+	  if key == :date
+        entrydata[key] = Date.new($year.to_i, value.month, value.day)
       end
-	  if key == :valuta # Replace :specific_key with the key you're checking for
-        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
+	  if key == :valuta
+        entrydata[key] = Date.new($year.to_i, value.month, value.day)
       end
       puts "      ; #{key}: #{entrydata[key]}"
     end
@@ -418,7 +418,6 @@ def parse_general_statement_data(fulltext)
     end
   end
   $year = date.year
-  #puts "THE FUCKING year '#{$year}'"
   {date: date, iban: iban, currency: currency}
 end
 
