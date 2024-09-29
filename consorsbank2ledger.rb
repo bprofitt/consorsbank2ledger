@@ -10,6 +10,7 @@ $account_instrument_buy = "Ausgaben:Privat:NichtSteuerrelevant:Wertpapierkaeufe"
 $account_interest = "Einnahmen:Privat:NichtSteuerrelevant:ZinsenDividenden"
 $account_prefix ="Besitzposten:Privatvermoegen:Umlaufvermoegen:LiquideMittel:Consorsbank:"
 $account_unknown ="OffeneBuchungen"
+$year = ""
 
 def parsentries(fulltext)
   entries = Array.new
@@ -34,12 +35,20 @@ end
 
 def entries2ledger(entries,statement_data)
   def format_ledger(entrydata,statement_data)
-    print "#{entrydata[:date].strftime("%Y/%m/%d")}=#{entrydata[:valuta].strftime("%Y/%m/%d")} "
+  #Date.new(new_year, entrydata[:date].month, entrydata[:date].day)
+  
+    print "#{Date.new($year.to_i, entrydata[:date].month, entrydata[:date].day).strftime("%Y/%m/%d")}=#{Date.new($year.to_i, entrydata[:valuta].month, entrydata[:valuta].day).strftime("%Y/%m/%d")} "
     puts entrydata[:ledgerline]
     puts "    #{$account_prefix}#{statement_data[:iban]}\t#{entrydata[:value].to_s.gsub('.',',')} #{statement_data[:currency]}"
     puts "    #{entrydata[:toaccount]}"
     entrydata.each do |key,value|
-      puts "      ; #{key}: #{value}"
+	  if key == :date # Replace :specific_key with the key you're checking for
+        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
+      end
+	  if key == :valuta # Replace :specific_key with the key you're checking for
+        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
+      end
+      puts "      ; #{key}: #{entrydata[key]}"
     end
   end
 
@@ -172,6 +181,7 @@ def entries2ledger(entries,statement_data)
     when "EURO-UEBERW."
       if result=/EURO-UEBERW..+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
+		#puts "DAMN DATES:  '#{result[1] + '.' + $year}'"
         entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
@@ -182,6 +192,83 @@ def entries2ledger(entries,statement_data)
         entrydata.merge!(recipient: entry[1].split.join(' '))
 
         (bic,iban)=entry[2].split.join(' ').split(' ')
+        entrydata.merge!(bic: bic.tr('<>',''))
+        entrydata.merge!(iban: Ibanizator.iban_from_string(iban))
+
+        entrydata.merge!(reason: entry[3].to_s.split.join(' '))
+        
+        entrydata.merge!(ledgerline: "#{entry_type} #{entrydata[:recipient]}")
+        entrydata.merge!(toaccount: $account_unknown)
+      else
+        puts "ERROR: could not parse '#{entry[0]}'"
+        exit
+      end
+	  
+	when "GEHALT/RENTE"
+      if result=/GEHALT\/RENTE..+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
+        entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
+        entrydata.merge!(pnnnr: result[2])
+        entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
+        value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
+        if result[5] == '-'
+          value=value*-1
+        end
+        entrydata.merge!(value: value)
+        entrydata.merge!(recipient: entry[1].split.join(' '))
+
+        (bic,iban)=entry[2].split.join(' ').split(' ')
+        entrydata.merge!(bic: bic.tr('<>',''))
+        entrydata.merge!(iban: Ibanizator.iban_from_string(iban))
+
+        entrydata.merge!(reason: entry[3].to_s.split.join(' '))
+        
+        entrydata.merge!(ledgerline: "#{entry_type} #{entrydata[:recipient]}")
+        entrydata.merge!(toaccount: $account_unknown)
+      else
+        puts "ERROR: could not parse '#{entry[0]}'"
+        exit
+      end
+
+	when "LASTSCHRIFT"
+      if result=/LASTSCHRIFT.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
+        entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
+        entrydata.merge!(pnnnr: result[2])
+        entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
+        value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
+        if result[5] == '-'
+          value=value*-1
+        end
+        entrydata.merge!(value: value)
+        entrydata.merge!(recipient: entry[1].split.join(' '))
+		
+		cleaned_string = entry[2].gsub(/[<>]/, '').strip
+        (bic,iban)=cleaned_string.split(/\s+/)
+        entrydata.merge!(bic: bic.tr('<>',''))
+        entrydata.merge!(iban: Ibanizator.iban_from_string(iban))
+
+        entrydata.merge!(reason: entry[3].to_s.split.join(' '))
+        
+        entrydata.merge!(ledgerline: "#{entry_type} #{entrydata[:recipient]}")
+        entrydata.merge!(toaccount: $account_unknown)
+      else
+        puts "ERROR: could not parse '#{entry[0]}'"
+        exit
+      end
+
+	when "GIROCARD"
+      if result=/GIROCARD.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
+        entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
+        entrydata.merge!(pnnnr: result[2])
+        entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
+        value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
+        if result[5] == '-'
+          value=value*-1
+        end
+        entrydata.merge!(value: value)
+        entrydata.merge!(recipient: entry[1].split.join(' '))
+		
+		cleaned_string = entry[2].gsub(/[<>]/, '').strip
+        (bic,iban)=cleaned_string.split(/\s+/)
         entrydata.merge!(bic: bic.tr('<>',''))
         entrydata.merge!(iban: Ibanizator.iban_from_string(iban))
 
@@ -244,6 +331,39 @@ def entries2ledger(entries,statement_data)
         exit
       end
 
+	when "ABSCHLUSS"
+		if result=/ABSCHLUSS +(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
+		entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
+        entrydata.merge!(pnnnr: result[2])
+        entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
+		value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
+        if result[5] == '-'
+          value=value*-1
+        end
+        entrydata.merge!(value: value)
+		description, value = entry[1].match(/(.*?)(\d+[\.,]\d+\+?)$/).captures
+
+		#sign = value[-1] if value[-1] =~ /[+-]/
+		# Remove the sign from the number part
+		#number_part = value[0..-2].gsub('.', '') # Remove dots
+
+		# Replace the comma with a dot for float conversion, if needed
+		#number_part = number_part.gsub(',', '.')
+
+		value = value.to_s.gsub('.', '').to_f
+        if result[6] == '-'
+          value=value*-1
+        end
+
+		# Format the output to keep the original comma
+		#formatted_value = "#{sign}#{number_part.gsub('.', ',')}"
+		entrydata.merge!(value: value)
+		
+      else
+        puts "ERROR: could not parse '#{entry[0]}'"
+        exit
+      end
+
     when "DEV/SORTEN"
       if result=/DEV\/SORTEN +(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
@@ -297,6 +417,8 @@ def parse_general_statement_data(fulltext)
       currency=result[1]
     end
   end
+  $year = date.year
+  #puts "THE FUCKING year '#{$year}'"
   {date: date, iban: iban, currency: currency}
 end
 
