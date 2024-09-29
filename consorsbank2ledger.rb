@@ -37,19 +37,21 @@ def entries2ledger(entries,statement_data)
   def format_ledger(entrydata,statement_data)
   #Date.new(new_year, entrydata[:date].month, entrydata[:date].day)
   
-    print "#{Date.new($year.to_i, entrydata[:date].month, entrydata[:date].day).strftime("%Y/%m/%d")}=#{Date.new($year.to_i, entrydata[:valuta].month, entrydata[:valuta].day).strftime("%Y/%m/%d")} "
-    puts entrydata[:ledgerline]
-    puts "    #{$account_prefix}#{statement_data[:iban]}\t#{entrydata[:value].to_s.gsub('.',',')} #{statement_data[:currency]}"
-    puts "    #{entrydata[:toaccount]}"
-    entrydata.each do |key,value|
-	  if key == :date
-        entrydata[key] = Date.new($year.to_i, value.month, value.day)
+    #print "#{Date.new($year.to_i, entrydata[:date].month, entrydata[:date].day).strftime("%Y/%m/%d")}=#{Date.new($year.to_i, entrydata[:valuta].month, entrydata[:valuta].day).strftime("%Y/%m/%d")} "
+    #puts entrydata[:ledgerline]
+    #puts "    #{$account_prefix}#{statement_data[:iban]}\t#{entrydata[:value].to_s.gsub('.',',')} #{statement_data[:currency]}"
+    #puts "    #{entrydata[:toaccount]}"
+    entrydata.each_with_index  do |(key,value), index|
+	  if key == :date # Replace :specific_key with the key you're checking for
+        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
       end
-	  if key == :valuta
-        entrydata[key] = Date.new($year.to_i, value.month, value.day)
+	  if key == :valuta # Replace :specific_key with the key you're checking for
+        entrydata[key] = Date.new($year.to_i, value.month, value.day) # Set the new value you want
       end
-      puts "      ; #{key}: #{entrydata[key]}"
+      print value
+      print ', ' unless index == entrydata.size - 1
     end
+	puts # For a newline at the end
   end
 
   entries.each do |entry|
@@ -57,7 +59,7 @@ def entries2ledger(entries,statement_data)
     #    entrydata.merge!(raw: entry)
     #    pp entry
     entry_type=entry.first.scan(/^.*?  /).first[..-3].sub(/ NR\..*/,"").to_s
-    entrydata.merge!(entrytype: entry_type)
+    #entrydata.merge!(entrytype: entry_type) # Dont print entry type, irrelevant for csvs
     case entry_type
     when "EFFEKTEN"
       if result=/EFFEKTEN.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\w\.\,]+)([+-])/.match(entry[0])
@@ -182,7 +184,7 @@ def entries2ledger(entries,statement_data)
       if result=/EURO-UEBERW..+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
 		#puts "DAMN DATES:  '#{result[1] + '.' + $year}'"
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -207,7 +209,7 @@ def entries2ledger(entries,statement_data)
 	when "GEHALT/RENTE"
       if result=/GEHALT\/RENTE..+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -232,7 +234,7 @@ def entries2ledger(entries,statement_data)
 	when "LASTSCHRIFT"
       if result=/LASTSCHRIFT.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -258,7 +260,7 @@ def entries2ledger(entries,statement_data)
 	when "GIROCARD"
       if result=/GIROCARD.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -284,7 +286,7 @@ def entries2ledger(entries,statement_data)
     when "GUTSCHRIFT"
       if result=/GUTSCHRIFT.+(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
         entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
         value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -308,9 +310,9 @@ def entries2ledger(entries,statement_data)
 
     when "DAUERAUFTRAG"
       if result=/DAUERAUFTRAG NR.(\d+) +(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
-        entrydata.merge!(id: result[1])
+        #entrydata.merge!(id: result[1])
         entrydata.merge!(date: Date.strptime(result[2],'%d.%m'))
-        entrydata.merge!(pnnnr: result[3])
+        #entrydata.merge!(pnnnr: result[3])
         entrydata.merge!(valuta: Date.strptime(result[4],'%d.%m'))
         value = result[5].to_s.gsub('.', '').gsub(',','.').to_f
         if result[6] == '-'
@@ -334,7 +336,7 @@ def entries2ledger(entries,statement_data)
 	when "ABSCHLUSS"
 		if result=/ABSCHLUSS +(\d\d\.\d\d)\. +(\d+) +(\d\d\.\d\d)\. +([\d\.\,]+)([+-])/.match(entry[0])
 		entrydata.merge!(date: Date.strptime(result[1],'%d.%m'))
-        entrydata.merge!(pnnnr: result[2])
+        #entrydata.merge!(pnnnr: result[2])
         entrydata.merge!(valuta: Date.strptime(result[3],'%d.%m'))
 		value = result[4].to_s.gsub('.', '').gsub(',','.').to_f
         if result[5] == '-'
@@ -429,7 +431,7 @@ reader.pages.each do |page|
 end
 
 #puts fulltext
-
+puts "Buchung,Valuta,Betrag,Sender / Empfänger,BIC,IBAN,Buchungstext,Verwendungszweck,Kategorie,Stichwörter"
 statement_data=parse_general_statement_data(fulltext)
 #pp statement_data
 entries=parsentries(fulltext)
